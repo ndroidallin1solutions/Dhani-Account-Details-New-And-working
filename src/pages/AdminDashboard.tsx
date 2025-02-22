@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IndianRupee, LogOut, Users, X, Eye, EyeOff } from 'lucide-react';
+import { IndianRupee, LogOut, Users, X, Eye, EyeOff, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import useStore from '../lib/store';
 
 interface EditUserForm {
@@ -19,11 +19,18 @@ interface AddUserForm {
   accountType: string;
   balance: number;
   bankAccount: string;
+  initialDeposit: number;
+}
+
+interface Transaction {
+  description: string;
+  amount: number;
+  userId: string;
 }
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const { users, logout, updateUser, deleteUser, addUser } = useStore();
+  const { users, logout, updateUser, deleteUser, addUser, transactions, addTransaction, updateTransaction, deleteTransaction } = useStore();
   const nonAdminUsers = users.filter(user => !user.isAdmin);
 
   const [editingUser, setEditingUser] = useState<string | null>(null);
@@ -37,6 +44,7 @@ function AdminDashboard() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [addForm, setAddForm] = useState<AddUserForm>({
     userId: '',
     password: '',
@@ -45,6 +53,20 @@ function AdminDashboard() {
     accountType: '',
     balance: 0,
     bankAccount: '',
+    initialDeposit: 0,
+  });
+
+  const [transactionForm, setTransactionForm] = useState<Transaction>({
+    description: '',
+    amount: 0,
+    userId: '',
+  });
+
+  const [editingTransaction, setEditingTransaction] = useState<number | null>(null);
+  const [editTransactionForm, setEditTransactionForm] = useState<Transaction>({
+    description: '',
+    amount: 0,
+    userId: '',
   });
 
   const handleLogout = () => {
@@ -77,10 +99,28 @@ function AdminDashboard() {
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      addUser({
-        ...addForm,
+      const newUser = {
+        userId: addForm.userId,
+        password: addForm.password,
+        accountName: addForm.accountName,
+        accountNumber: addForm.accountNumber,
+        accountType: addForm.accountType,
+        balance: addForm.initialDeposit, // Set initial balance from deposit
+        bankAccount: addForm.bankAccount,
         isAdmin: false,
-      });
+      };
+      
+      addUser(newUser);
+      
+      // Add initial deposit transaction if amount > 0
+      if (addForm.initialDeposit > 0) {
+        addTransaction({
+          description: 'Initial Deposit',
+          amount: addForm.initialDeposit,
+          userId: addForm.userId,
+        });
+      }
+      
       setShowAddModal(false);
       setAddForm({
         userId: '',
@@ -90,9 +130,36 @@ function AdminDashboard() {
         accountType: '',
         balance: 0,
         bankAccount: '',
+        initialDeposit: 0,
       });
     } catch (error: any) {
       alert(error.message);
+    }
+  };
+
+  const handleAddTransaction = (userId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    addTransaction({ ...transactionForm, userId });
+    setTransactionForm({
+      description: '',
+      amount: 0,
+      userId: '',
+    });
+  };
+
+  const handleEditTransaction = (index: number, transaction: Transaction) => {
+    setEditingTransaction(index);
+    setEditTransactionForm(transaction);
+  };
+
+  const handleSaveTransaction = (index: number) => {
+    updateTransaction(index, editTransactionForm);
+    setEditingTransaction(null);
+  };
+
+  const handleDeleteTransaction = (index: number) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      deleteTransaction(index);
     }
   };
 
@@ -133,39 +200,14 @@ function AdminDashboard() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User ID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Account Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Account Number
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Account Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Balance
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bank Account
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {nonAdminUsers.map((user) => (
-                    <tr key={user.userId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              {nonAdminUsers.map((user) => (
+                <div key={user.userId} className="mb-8 border rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 p-4">
+                    <div className="grid grid-cols-7 gap-4">
+                      <div className="text-sm font-medium text-gray-900">
                         {user.userId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500">
                         {editingUser === user.userId ? (
                           <input
                             type="text"
@@ -176,8 +218,8 @@ function AdminDashboard() {
                         ) : (
                           user.accountName
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500">
                         {editingUser === user.userId ? (
                           <input
                             type="text"
@@ -188,8 +230,8 @@ function AdminDashboard() {
                         ) : (
                           user.accountNumber
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500">
                         {editingUser === user.userId ? (
                           <input
                             type="text"
@@ -200,8 +242,8 @@ function AdminDashboard() {
                         ) : (
                           user.accountType
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500">
                         {editingUser === user.userId ? (
                           <input
                             type="number"
@@ -212,8 +254,8 @@ function AdminDashboard() {
                         ) : (
                           `₹ ${user.balance?.toLocaleString()}`
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500">
                         {editingUser === user.userId ? (
                           <input
                             type="text"
@@ -224,19 +266,19 @@ function AdminDashboard() {
                         ) : (
                           user.bankAccount
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div className="text-sm text-gray-500 flex items-center space-x-2">
                         {editingUser === user.userId ? (
                           <button
                             onClick={() => handleSaveEdit(user.userId)}
-                            className="text-green-600 hover:text-green-900 mr-4"
+                            className="text-green-600 hover:text-green-900"
                           >
                             Save
                           </button>
                         ) : (
                           <button
                             onClick={() => handleEdit(user)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            className="text-blue-600 hover:text-blue-900"
                           >
                             Edit
                           </button>
@@ -247,11 +289,113 @@ function AdminDashboard() {
                         >
                           Delete
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <button
+                          onClick={() => setExpandedUser(expandedUser === user.userId ? null : user.userId)}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          {expandedUser === user.userId ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {expandedUser === user.userId && (
+                    <div className="p-4 bg-white">
+                      <div className="mb-4">
+                        <h3 className="text-lg font-semibold mb-2">Transactions</h3>
+                        <form onSubmit={(e) => handleAddTransaction(user.userId, e)} className="flex gap-4 mb-4">
+                          <input
+                            type="text"
+                            value={transactionForm.description}
+                            onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })}
+                            placeholder="Transaction description"
+                            className="flex-1 border rounded-md px-3 py-2"
+                            required
+                          />
+                          <input
+                            type="number"
+                            value={transactionForm.amount}
+                            onChange={(e) => setTransactionForm({ ...transactionForm, amount: Number(e.target.value) })}
+                            placeholder="Amount"
+                            className="w-32 border rounded-md px-3 py-2"
+                            required
+                          />
+                          <button
+                            type="submit"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                          >
+                            Add
+                          </button>
+                        </form>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {transactions
+                          .filter(t => t.userId === user.userId)
+                          .map((transaction, index) => (
+                            <div key={index} className="flex justify-between items-center py-2 border-b">
+                              {editingTransaction === index ? (
+                                <div className="flex-1 flex gap-4">
+                                  <input
+                                    type="text"
+                                    value={editTransactionForm.description}
+                                    onChange={(e) => setEditTransactionForm({
+                                      ...editTransactionForm,
+                                      description: e.target.value
+                                    })}
+                                    className="flex-1 border rounded-md px-3 py-2"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={editTransactionForm.amount}
+                                    onChange={(e) => setEditTransactionForm({
+                                      ...editTransactionForm,
+                                      amount: Number(e.target.value)
+                                    })}
+                                    className="w-32 border rounded-md px-3 py-2"
+                                  />
+                                  <button
+                                    onClick={() => handleSaveTransaction(index)}
+                                    className="text-green-600 hover:text-green-900 px-4"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-gray-900">{transaction.description}</span>
+                                  <div className="flex items-center space-x-4">
+                                    <span className={`font-medium ${
+                                      transaction.amount > 0 ? 'text-green-600' : 'text-gray-900'
+                                    }`}>
+                                      {transaction.amount > 0 ? '+ ' : ''}₹ {transaction.amount.toLocaleString()}
+                                    </span>
+                                    <button
+                                      onClick={() => handleEditTransaction(index, transaction)}
+                                      className="text-blue-600 hover:text-blue-900"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteTransaction(index)}
+                                      className="text-red-600 hover:text-red-900"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -331,13 +475,14 @@ function AdminDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Balance</label>
+                <label className="block text-sm font-medium text-gray-700">Initial Deposit</label>
                 <input
                   type="number"
                   required
-                  value={addForm.balance}
-                  onChange={(e) => setAddForm({ ...addForm, balance: Number(e.target.value) })}
+                  value={addForm.initialDeposit}
+                  onChange={(e) => setAddForm({ ...addForm, initialDeposit: Number(e.target.value) })}
                   className="mt-1 block w-full border rounded-md shadow-sm py-2 px-3"
+                  placeholder="Enter initial deposit amount"
                 />
               </div>
               <div>

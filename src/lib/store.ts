@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+interface Transaction {
+  description: string;
+  amount: number;
+  userId: string;
+}
+
 interface User {
   userId: string;
   password?: string;
@@ -15,11 +21,16 @@ interface User {
 interface UserStore {
   users: User[];
   currentUser: User | null;
+  transactions: Transaction[];
   addUser: (user: User) => void;
   updateUser: (userId: string, updatedUser: Partial<User>) => void;
   deleteUser: (userId: string) => void;
   login: (userId: string, password: string) => boolean;
   logout: () => void;
+  addTransaction: (transaction: Transaction) => void;
+  updateTransaction: (index: number, transaction: Transaction) => void;
+  deleteTransaction: (index: number) => void;
+  getTransactionsForUser: (userId: string) => Transaction[];
 }
 
 const useStore = create<UserStore>()(
@@ -43,6 +54,28 @@ const useStore = create<UserStore>()(
           bankAccount: 'XXXXXXXXX0595',
         },
       ],
+      transactions: [
+        {
+          description: 'Transfer to Saving Account',
+          amount: 0,
+          userId: '8285529684'
+        },
+        {
+          description: 'Deposit',
+          amount: 500000,
+          userId: '8285529684'
+        },
+        {
+          description: 'Loan Amount Paid',
+          amount: 0,
+          userId: '8285529684'
+        },
+        {
+          description: 'ATM Withdrawal',
+          amount: 0,
+          userId: '8285529684'
+        },
+      ],
       currentUser: null,
       addUser: (user) => {
         const users = get().users;
@@ -63,6 +96,7 @@ const useStore = create<UserStore>()(
       deleteUser: (userId) => {
         set((state) => ({
           users: state.users.filter((user) => user.userId !== userId),
+          transactions: state.transactions.filter((t) => t.userId !== userId),
         }));
       },
       login: (userId, password) => {
@@ -74,6 +108,26 @@ const useStore = create<UserStore>()(
         return false;
       },
       logout: () => set({ currentUser: null }),
+      addTransaction: (transaction) => {
+        set((state) => ({
+          transactions: [...state.transactions, transaction],
+        }));
+      },
+      updateTransaction: (index, transaction) => {
+        set((state) => ({
+          transactions: state.transactions.map((t, i) =>
+            i === index ? transaction : t
+          ),
+        }));
+      },
+      deleteTransaction: (index) => {
+        set((state) => ({
+          transactions: state.transactions.filter((_, i) => i !== index),
+        }));
+      },
+      getTransactionsForUser: (userId) => {
+        return get().transactions.filter((t) => t.userId === userId);
+      },
     }),
     {
       name: 'dhani-finance-storage',
