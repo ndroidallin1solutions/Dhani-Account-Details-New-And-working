@@ -5,19 +5,14 @@ import useStore from '../lib/store';
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { currentUser, logout } = useStore();
+  const { currentUser, logout, getTransactionsForUser } = useStore();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  const transactions = [
-    { description: 'Transfer to Saving Account', amount: 0 },
-    { description: 'Deposit', amount: 500000 },
-    { description: 'Loan Amount Paid', amount: 0 },
-    { description: 'ATM Withdrawal', amount: 0 },
-  ];
+  const transactions = currentUser ? getTransactionsForUser(currentUser.userId) : [];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -93,4 +88,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default Dashboard
